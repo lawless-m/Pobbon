@@ -1,0 +1,65 @@
+This project is a set of tools for Paint by Numbers.
+
+While there are a few online projects for doing this we're going to tailor it to our setup.
+
+I have an Axidraw plotter so we're going to calibrate our areas to this device.
+
+If we get really good it will do the painting but that can wait, the area outlines are  our first concern.
+
+There is an Axidraw python library 
+
+https://axidraw.com/doc/py_api/
+
+so we can use that to drive the device to start with.
+
+So the first concern is to create the SVGs
+
+
+--- Claude's notes, 2026-09-02 ---
+
+Read the above. Rough breakdown of what "create the SVGs" involves for a
+paint-by-numbers pipeline, in the order I'd tackle it:
+
+1. Image ingestion + color quantization
+   - Reduce a source photo to N discrete colors (k-means or median-cut).
+   - N should be a tunable parameter (typical PBN kits use 10-30 colors).
+
+2. Region segmentation
+   - Flood-fill / connected-components per color to get discrete regions.
+   - Filter out tiny regions (speckle) below a min-area threshold, or merge
+     them into the nearest neighbor - the plotter has a practical minimum
+     stroke size and tiny slivers aren't paintable anyway.
+
+3. Vectorization
+   - Trace region boundaries to polygons/beziers (potrace-style) rather than
+     emitting raw pixel-boundary staircases.
+   - Output one SVG path per region, plus a label (color index/number) placed
+     at the region's centroid or pole of inaccessibility for the "paint by
+     number" text.
+
+4. Axidraw calibration
+   - Map SVG user units to physical mm using the actual paper/canvas size
+     clamped to the Axidraw's working area (A4/A3 depending on model).
+   - Need to check: is stroke-only output enough for outlines, or do we also
+     want the AxiDraw to write the number labels (font as pen strokes)?
+   - The py_api link in the notes above is the right starting point -
+     confirm which AxiDraw model (MiniKit vs V3/V3 A3) since travel area and
+     port config differ.
+
+5. Output
+   - One SVG for outlines+numbers (for the pen plot).
+   - Optionally a separate reference SVG/PNG with fills, for the human to
+     match numbers to paint colors.
+
+Open questions to settle before coding:
+   - Target color count and whether the palette is fixed (a specific paint
+     set) or derived per-image.
+   - Minimum region size in mm at final print scale.
+   - Whether numbers get plotted by the pen or just printed separately.
+
+Next concrete step: stand up a small script that takes an image + color
+count and emits (a) a quantized preview and (b) per-color region polygons,
+before touching the Axidraw side at all.
+
+
+
